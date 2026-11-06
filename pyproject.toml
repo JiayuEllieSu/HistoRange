@@ -1,0 +1,72 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "histrange"
+dynamic = ["version"]
+description = "Histology-defined anisotropic transport and signaling-range inference for spatial transcriptomics"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Jiayu Ellie Su" }]
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.26",
+    "scipy>=1.11",
+]
+keywords = [
+    "spatial transcriptomics",
+    "cell-cell communication",
+    "ligand-receptor",
+    "histology",
+    "H&E",
+    "finite element",
+    "signaling range",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=7.0"]
+dev = ["pytest>=7.0", "pytest-cov>=4.0", "ruff>=0.5", "build>=1.0"]
+
+[project.urls]
+Homepage = "https://github.com/JiayuEllieSu/HistoRange"
+Source = "https://github.com/JiayuEllieSu/HistoRange"
+Issues = "https://github.com/JiayuEllieSu/HistoRange/issues"
+
+[tool.setuptools]
+packages = ["histrange"]
+
+[tool.setuptools.dynamic]
+version = { attr = "histrange.__version__" }
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+markers = [
+    "slow: end-to-end tests that run the full workflow (deselect with -m 'not slow')",
+]
+
+[tool.coverage.run]
+source = ["histrange"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+extend-exclude = ["build", "dist"]
+
+[tool.ruff.lint]
+# pyflakes + pycodestyle errors/warnings; long lines in the frozen modules are left as written.
+select = ["E", "F", "W"]
+ignore = ["E501"]
