@@ -1,0 +1,25 @@
+cff-version: 1.2.0
+message: "If you use HistoRange, please cite it using the metadata below."
+title: "HistoRange: Histology-Defined Continuum Transport for Spatial Cell-Cell Communication and Signaling Range Inference"
+type: software
+version: 0.1.0
+authors:
+  - family-names: Su
+    given-names: Jiayu Ellie
+    affiliation: Phillips Academy, Andover, Massachusetts, USA
+repository-code: "https://github.com/JiayuEllieSu/HistoRange"
+url: "https://github.com/JiayuEllieSu/HistoRange"
+license: MIT
+abstract: >-
+  HistoRange is a computational framework for spatial transcriptomics that uses
+  registered H&E histology to define a spatially varying anisotropic transport
+  geometry for secreted ligand signaling. It separates spatial association
+  detection from post-detection effective-range estimation, so that a fitted
+  scale is reported quantitatively only when the data support it.
+keywords:
+  - spatial transcriptomics
+  - cell-cell communication
+  - ligand-receptor signaling
+  - H&E histology
+  - finite element method
+  - signaling range
