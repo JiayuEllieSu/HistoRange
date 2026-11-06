@@ -1,5 +1,5 @@
 # Files shipped in the source distribution in addition to the package itself.
-include CHANGELOG.md CITATION.cff requirements.txt
+include CITATION.cff requirements.txt
 recursive-include tests *.py
 recursive-include examples *.py
 recursive-include docs *.md
