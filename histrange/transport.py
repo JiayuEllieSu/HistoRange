@@ -74,41 +74,38 @@ class Operator:
             "scale": scale,
         }
         if spectrum:
-            value, method = self._smallest_generalized_eigenvalue(n_eigenvalues)
+            try:
+                value, method = self._smallest_generalized_eigenvalue(n_eigenvalues)
+            except Exception as exc:
+                # A failed spectral check must never silently certify an operator as valid.
+                value, method = float("nan"), "algebraically smallest Lanczos failed: %s" % exc
             report["min_generalized_eigenvalue"] = value
             report["spectrum_method"] = method
         return report
 
     def _smallest_generalized_eigenvalue(self, k=1):
-
+        # The Neumann stiffness matrix has a constant zero mode. Searching for
+        # eigenvalues *near zero* can therefore miss a negative mode entirely.
+        # Request the algebraically smallest generalized eigenvalue instead.
         a = self.stiffness
         n = a.shape[0]
-        scale = float(abs(a).max()) if a.nnz else 1.0
-        shift = -1e-8 * max(scale, 1e-300)
-        k = int(min(max(k, 1), max(n - 2, 1)))
-        if n > 3:
-            try:
-                values = eigsh(
-                    a.tocsc(),
-                    k=k,
-                    M=self.mass.tocsc(),
-                    sigma=shift,
-                    which="LM",
-                    return_eigenvectors=False,
-                    maxiter=5000,
-                )
-                return float(np.min(values)), "shift-invert Lanczos"
-            except Exception:
-                pass
-        rng = np.random.default_rng(0)
-        worst = np.inf
-        probes = [np.ones(n)] + [rng.standard_normal(n) for _ in range(8)]
-        for v in probes:
-            denominator = float(v @ (self.mass @ v))
-            if denominator <= 0:
-                continue
-            worst = min(worst, float(v @ (a @ v)) / denominator)
-        return (float(worst) if np.isfinite(worst) else 0.0), "Rayleigh probe"
+        if n == 1:
+            mass = float(self.mass[0, 0])
+            if mass <= 0:
+                raise ValueError("mass matrix is not positive definite")
+            return float(a[0, 0]) / mass, "one-dimensional direct check"
+
+        k = int(min(max(k, 1), n - 1))
+        values = eigsh(
+            a.tocsc(),
+            k=k,
+            M=self.mass.tocsc(),
+            which="SA",
+            return_eigenvectors=False,
+            tol=1e-8,
+            maxiter=5000,
+        )
+        return float(np.min(values)), "algebraically smallest Lanczos"
 
     def validate(
         self,
@@ -139,9 +136,14 @@ class Operator:
                 % report["constant_residual"]
             )
         if spectrum:
-            smallest = report.get("min_generalized_eigenvalue", 0.0)
+            smallest = report["min_generalized_eigenvalue"]
             bound = -eigenvalue_tolerance * max(report["scale"], 1e-300)
-            if smallest < bound:
+            if not np.isfinite(smallest):
+                failures.append(
+                    "smallest generalized eigenvalue could not be computed; "
+                    "cannot verify positive semidefiniteness (%s)" % report["spectrum_method"]
+                )
+            elif smallest < bound:
                 failures.append(
                     "smallest generalized eigenvalue %.3e is materially negative "
                     "(bound %.3e)" % (smallest, bound)
