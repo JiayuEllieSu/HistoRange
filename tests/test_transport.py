@@ -174,25 +174,35 @@ def test_validation_rejects_nonpositive_lumped_mass(iso_operator):
     assert any("lumped mass" in f for f in failures)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "Known defect: _smallest_generalized_eigenvalue uses shift-invert Lanczos centred at "
-        "~0 with k=1. The no-flux operator always has an exact zero eigenvalue (constants), so "
-        "the search returns it and never sees a materially negative eigenvalue (here the true "
-        "minimum is about -2.6). Correctly assembled operators are PSD by construction, so "
-        "results are unaffected, but the PSD safeguard cannot fire. Remove this marker once fixed."
-    ),
-)
 def test_validation_rejects_indefinite_stiffness(iso_operator):
     n = iso_operator.stiffness.shape[0]
-    # A symmetric, row-sum-zero perturbation with a large negative direction.
+    # A symmetric, row-sum-zero perturbation creates a negative mode, while
+    # the original no-flux zero eigenvalue remains in place.
     i, j = 10, 11
     bump = csr_matrix(([-5.0, 5.0, 5.0, -5.0], ([i, i, j, j], [i, j, i, j])), shape=(n, n))
     bad = _corrupted(iso_operator, stiffness=iso_operator.stiffness + bump)
-    _, failures = bad.validate(strict=False)
-    assert any("eigenvalue" in f for f in failures)
 
+    report, failures = bad.validate(strict=False)
+    assert report["valid"] is False
+    assert report["min_generalized_eigenvalue"] < -1.0
+    assert report["spectrum_method"] == "algebraically smallest Lanczos"
+    assert any("materially negative" in failure for failure in failures)
+    with pytest.raises(OperatorError, match="materially negative"):
+        bad.validate()
+
+
+def test_validation_fails_closed_on_eigensolver_error(iso_operator, monkeypatch):
+    def broken_eigensolver(*args, **kwargs):
+        raise RuntimeError("simulated eigensolver failure")
+
+    monkeypatch.setattr(transport, "eigsh", broken_eigensolver)
+    report, failures = iso_operator.validate(strict=False)
+    assert report["valid"] is False
+    assert np.isnan(report["min_generalized_eigenvalue"])
+    assert "simulated eigensolver failure" in report["spectrum_method"]
+    assert any("could not be computed" in failure for failure in failures)
+    with pytest.raises(OperatorError, match="could not be computed"):
+        iso_operator.validate()
 
 def test_checks_without_spectrum_and_repr(iso_operator):
     report = iso_operator.checks()
